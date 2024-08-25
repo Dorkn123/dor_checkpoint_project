@@ -1,0 +1,7 @@
+{
+  "url": "https://dummyjson.com/products",
+  "bucket_name": "dor-checkpoint-assets-dev",
+  "s3_filename": "filtered_products.json",
+  "cloudfront_domain": "d3sdv2c37f1n19.cloudfront.net",
+  "cloudfront_url": "https://d3sdv2c37f1n19.cloudfront.net/filtered_products.json"
+}

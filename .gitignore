@@ -1,0 +1,32 @@
+# Terraform directories and files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Virtual environments (if any)
+venv/
+env/
+
+# Terragrunt cache
+.terragrunt-cache/
+
+# Node modules (if any)
+node_modules/
+
+# Text editor and IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Ignore gathered code file
+dor_checkpoint_project_code.txt

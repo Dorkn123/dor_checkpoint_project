@@ -1,0 +1,48 @@
+name: Infra Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
+
+    - name: Install Terragrunt
+      run: |
+        curl -L -o terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v0.35.4/terragrunt_linux_amd64
+        chmod +x terragrunt
+        sudo mv terragrunt /usr/local/bin/
+
+    - name: Deploy S3 in dev
+      run: |
+        cd terraform/environments/dev/s3
+        terragrunt init
+        terragrunt apply -auto-approve
+
+    - name: Deploy CloudFront in dev
+      run: |
+        cd terraform/environments/dev/cloudfront
+        terragrunt init
+        terragrunt apply -auto-approve
+
+    - name: Get Terraform Outputs
+      id: get_outputs
+      run: |
+        cd terraform/environments/dev/cloudfront
+        echo "bucket_name=$(terragrunt output -raw bucket_name)" >> $GITHUB_ENV
+        echo "cloudfront_domain_name=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
+
+    - name: Update config.json with Terraform Outputs
+      run: |
+        sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ env.bucket_name }}\"|g" python/src/config.json
+        sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain_name }}\"|g" python/src/config.json
+        sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain_name }}/filtered_products.json\"|g" python/src/config.json
