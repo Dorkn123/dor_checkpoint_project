@@ -26,7 +26,7 @@ def save_to_json(data, filename):
         json.dump(data, f)
 
 def upload_to_s3(filename, bucket_name, s3_filename):
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', region_name=os.getenv('AWS_DEFAULT_REGION', 'eu-north-1'))
     try:
         s3.upload_file(filename, bucket_name, s3_filename)
         print(f"File uploaded to S3: s3://{bucket_name}/{s3_filename}")
@@ -34,6 +34,7 @@ def upload_to_s3(filename, bucket_name, s3_filename):
         print("The file was not found")
     except NoCredentialsError:
         print("Credentials not available")
+
 
 def download_from_cloudfront(url):
     response = requests.get(url)
