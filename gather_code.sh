@@ -10,7 +10,7 @@ echo "" > $output_file
 # Function to gather code from a directory, excluding `terragrunt-cache` directories
 gather_code() {
     local dir_path=$1
-    for file in $(find $dir_path -type f ! -path "*/.terragrunt-cache/*"); do
+        for file in $(find $dir_path -type f ! -path "*/.terragrunt-cache/*" ! -path "*/.git/*"); do
         echo "Processing $file"
         echo "" >> $output_file
         echo "==================================================" >> $output_file

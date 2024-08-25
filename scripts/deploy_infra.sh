@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Set AWS Region (if not already set)
+# Load AWS credentials only if not running in CI
+if [ -z "$GITHUB_ACTIONS" ]; then
+    source creds/aws_credentials.sh
+fi
+
 export AWS_DEFAULT_REGION="eu-north-1"
 
 # Get the directory where this script is located
