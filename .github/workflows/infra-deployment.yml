@@ -32,7 +32,7 @@ jobs:
         terragrunt init
         terragrunt apply -auto-approve
 
-    - name: Deploy CloudFront in dev
+    - name: Deploy CloudFront in dev 
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
