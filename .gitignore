@@ -30,3 +30,4 @@ node_modules/
 
 # Ignore gathered code file
 dor_checkpoint_project_code.txt
+creds/aws_credentials.sh
