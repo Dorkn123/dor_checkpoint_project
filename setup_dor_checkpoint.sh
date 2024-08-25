@@ -57,4 +57,6 @@ touch scripts/deploy_code.sh
 touch README.md
 touch .gitignore
 
+gh repo create dor_checkpoint --public --source=. --remote=origin --push
+
 echo "Project structure for dor_checkpoint created successfully."
