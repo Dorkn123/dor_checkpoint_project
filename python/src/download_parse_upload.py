@@ -70,5 +70,5 @@ def main(config_path):
         print("Downloaded JSON from CloudFront successfully.")
 
 if __name__ == "__main__":
-    config_path = sys.argv[1] if len(sys.argv) > 1 else '/home/dor/dor_checkpoint/python/src/config.json'
+    config_path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), 'config.json')
     main(config_path)
