@@ -21,7 +21,7 @@ cd <repository-directory>
 
 #Installing Python Dependencies
 pip install -r python/requirements.txt
-
+'''
 
 # Usage Instructions
 # Infrastructure Deployment
