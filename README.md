@@ -14,18 +14,15 @@ This project demonstrates a DevOps pipeline that includes Terraform infrastructu
 - **GitHub Account:** A GitHub account is needed to push the repository and set up the CI/CD pipeline.
 
 ### Cloning the Repository
-```bash
+```bash 
 git clone <repository-url>
 cd <repository-directory>
-
-
-#Installing Python Dependencies
-pip install -r python/requirements.txt
-'''
+pip install -r python/requirements.txt    
+```
 
 # Usage Instructions
-# Infrastructure Deployment
-# You can deploy the infrastructure locally using the provided script:
+Infrastructure Deployment
+You can deploy the infrastructure locally using the provided script:
 ./scripts/deploy_infra.sh
 
 # This script will:
