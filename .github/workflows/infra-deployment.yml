@@ -14,12 +14,12 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v2
       with:
         terraform_version: "1.9.5"  # Use a specific, compatible version
 
     - name: Setup Terragrunt
-      uses: eLco/setup-terragrunt@v3
+      uses: AutSoft/setup-terragrunt@v2.0.0
       with:
         terragrunt_version: "0.66.9"  # Use the latest stable version or specify the version you want
 
