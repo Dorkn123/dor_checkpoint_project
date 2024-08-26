@@ -1,6 +1,10 @@
 name: Code Deployment
 
 on:
+  workflow_run:
+    workflows: ["Infra Deployment"]  # Name of the workflow to wait for, if required
+    types:
+      - completed  # Trigger only after the previous workflow is completed
   push:
     branches:
       - main
@@ -11,12 +15,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.x' 
+        python-version: '3.x'
 
     - name: Install dependencies
       run: |

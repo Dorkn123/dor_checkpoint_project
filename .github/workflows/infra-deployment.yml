@@ -41,7 +41,7 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}        
 
     - name: Setup and Deploy CloudFront in dev with Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
@@ -55,21 +55,35 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    - name: Get Terraform Outputs
-      id: get_outputs
+    - name: Get Terraform Output for bucket_name
+      id: get_bucket_name
       uses: gruntwork-io/terragrunt-action@v1
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_command: 'output -raw bucket_name, cloudfront_domain_name'
+        tg_command: 'output -raw bucket_name'
         tg_dir: 'terraform/environments/dev/cloudfront'
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
-
+  
+    - name: Get Terraform Output for cloudfront_domain_name
+      id: get_cloudfront_domain_name
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'output -raw cloudfront_domain_name'
+        tg_dir: 'terraform/environments/dev/cloudfront'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+  
     - name: Update config.json with Terraform Outputs
       run: |
-        sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ steps.get_outputs.outputs.bucket_name }}\"|g" python/src/config.json
-        sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ steps.get_outputs.outputs.cloudfront_domain_name }}\"|g" python/src/config.json
-        sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ steps.get_outputs.outputs.cloudfront_domain_name }}/filtered_products.json\"|g" python/src/config.json
+          sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ steps.get_bucket_name.outputs.value }}\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ steps.get_cloudfront_domain_name.outputs.value }}\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ steps.get_cloudfront_domain_name.outputs.value }}/filtered_products.json\"|g" python/src/config.json
+  
