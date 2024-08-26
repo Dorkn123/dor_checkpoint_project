@@ -19,7 +19,7 @@ jobs:
         terraform_version: "1.9.5"  # Use a specific, compatible version
 
     - name: Setup Terragrunt
-      uses: AutSoft/setup-terragrunt@v2.0.0
+      uses: gruntwork-io/terragrunt-action@v1
       with:
         terragrunt_version: "0.66.9"  # Use the latest stable version or specify the version you want
 
