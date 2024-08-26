@@ -8,7 +8,6 @@ on:
 env:
   tf_version: '1.9.5'
   tg_version: '0.66.9'
-  working_dir: 'project'
 
 jobs:
   deploy:
@@ -18,16 +17,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # - name: Setup Terraform
-    #   uses: hashicorp/setup-terraform@v2
-    #   with:
-    #     terraform_version: "1.9.5"  # Use a specific, compatible version
-
     - name: Setup Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
+        tg_command: 'apply'
+        tg_dir: 'terraform/environments/dev/s3'  # Change this for each specific deployment step
 
     - name: Deploy S3 in dev
       run: |
@@ -38,6 +34,14 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: "eu-north-1"
+
+    - name: Setup Terragrunt for CloudFront
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'apply'
+        tg_dir: 'terraform/environments/dev/cloudfront'  # This is the directory for CloudFront deployment
 
     - name: Deploy CloudFront in dev
       run: |
