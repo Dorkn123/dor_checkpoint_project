@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'terraform/**'  # All files in the terraform directory
-      - 'infra_deployment.yml'  # The infrastructure deployment file itself
       
 env:
   tf_version: '1.9.5'
