@@ -10,7 +10,6 @@ env:
   tg_version: '0.66.9'
   TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -29,7 +28,7 @@ jobs:
       with:
           path: |
             ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}    
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
 
     - name: Setup Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
@@ -37,10 +36,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
-        tg_dir: 'terraform/environments/dev/s3'  # Change this for each specific deployment step
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: "eu-north-1"
+        tg_dir: 'terraform/environments/dev/s3'
 
     - name: Deploy S3 in dev
       run: |
@@ -48,17 +44,6 @@ jobs:
         terragrunt init
         terragrunt apply -auto-approve
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: "eu-north-1"
-
-    - name: Setup Terragrunt for CloudFront
-      uses: gruntwork-io/terragrunt-action@v1
-      with:
-        tf_version: ${{ env.tf_version }}
-        tg_version: ${{ env.tg_version }}
-        tg_command: 'apply'
-        tg_dir: 'terraform/environments/dev/cloudfront'  # This is the directory for CloudFront deployment
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: "eu-north-1"
