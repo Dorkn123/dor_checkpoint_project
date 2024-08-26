@@ -29,9 +29,9 @@ jobs:
       with:
           path: |
             ${{ env.TF_PLUGIN_CACHE_DIR }}
-          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}    
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
 
-    - name: Setup Terragrunt
+    - name: Setup and Deploy S3 in dev with Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
       with:
         tf_version: ${{ env.tf_version }}
@@ -43,21 +43,13 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    - name: Deploy S3 in dev
-      run: |
-        cd terraform/environments/dev/s3
-        terragrunt init
-        terragrunt apply -auto-approve
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
-
-    - name: Deploy CloudFront in dev
-      run: |
-        cd terraform/environments/dev/cloudfront
-        terragrunt init
-        terragrunt apply -auto-approve
+    - name: Setup and Deploy CloudFront in dev with Terragrunt
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'apply'
+        tg_dir: 'terraform/environments/dev/cloudfront'
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -65,13 +57,19 @@ jobs:
 
     - name: Get Terraform Outputs
       id: get_outputs
-      run: |
-        cd terraform/environments/dev/cloudfront
-        echo "bucket_name=$(terragrunt output -raw bucket_name)" >> $GITHUB_ENV
-        echo "cloudfront_domain_name=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'output -raw bucket_name, cloudfront_domain_name'
+        tg_dir: 'terraform/environments/dev/cloudfront'
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
     - name: Update config.json with Terraform Outputs
       run: |
-        sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ env.bucket_name }}\"|g" python/src/config.json
-        sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain_name }}\"|g" python/src/config.json
-        sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain_name }}/filtered_products.json\"|g" python/src/config.json
+        sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ steps.get_outputs.outputs.bucket_name }}\"|g" python/src/config.json
+        sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ steps.get_outputs.outputs.cloudfront_domain_name }}\"|g" python/src/config.json
+        sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ steps.get_outputs.outputs.cloudfront_domain_name }}/filtered_products.json\"|g" python/src/config.json
