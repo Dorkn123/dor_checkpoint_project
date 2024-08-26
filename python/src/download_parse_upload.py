@@ -23,13 +23,14 @@ def download_json(url):
         print(f"Received response: {response.status_code}")
         if response.status_code == 200:
             json_data = response.json()
-            print(f"JSON data downloaded successfully: {json_data}")
+            print("JSON data downloaded successfully.")
             return json_data
         else:
             raise Exception(f"Failed to download JSON data: {response.status_code}")
     except Exception as e:
         print(f"Error downloading JSON data: {e}")
         raise
+
 
 def filter_products(data, min_price=100):
     print(f"Filtering products with min price: {min_price}")
