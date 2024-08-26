@@ -53,8 +53,9 @@ def save_to_json(data, filename):
         raise
 
 def upload_to_s3(filename, bucket_name, s3_filename):
-    print(f"Uploading {filename} to S3 bucket {bucket_name} as {s3_filename}")
-    s3 = boto3.client('s3', region_name=os.getenv('AWS_DEFAULT_REGION', 'eu-north-1'))
+    region = os.getenv('AWS_DEFAULT_REGION', 'eu-north-1')
+    print(f"Uploading {filename} to S3 bucket {bucket_name} in region {region} as {s3_filename}")
+    s3 = boto3.client('s3', region_name=region)
     try:
         s3.upload_file(filename, bucket_name, s3_filename)
         print(f"File uploaded to S3: s3://{bucket_name}/{s3_filename}")
@@ -65,6 +66,7 @@ def upload_to_s3(filename, bucket_name, s3_filename):
     except Exception as e:
         print(f"Error uploading file to S3: {e}")
         raise
+
 
 def download_from_cloudfront(url):
     print(f"Downloading file from CloudFront URL: {url}")
