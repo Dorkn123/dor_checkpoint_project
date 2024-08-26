@@ -1,10 +1,13 @@
-name: Infra Deployment
+name: Infrastructure Deployment
 
 on:
   push:
     branches:
       - main
-
+    paths:
+      - 'terraform/**'  # All files in the terraform directory
+      - 'infra_deployment.yml'  # The infrastructure deployment file itself
+      
 env:
   tf_version: '1.9.5'
   tg_version: '0.66.9'
@@ -23,14 +26,6 @@ jobs:
       shell: bash
       run: |
           mkdir --parents $TF_PLUGIN_CACHE_DIR
-
-    # - name: Cache Terraform
-    #   uses: actions/cache@v4
-    #   with:
-    #       path: |
-    #         ${{ env.TF_PLUGIN_CACHE_DIR }}
-    #       key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
-
 
     # Step 1: Deploy S3
     - name: Setup and Deploy S3 in dev with Terragrunt
