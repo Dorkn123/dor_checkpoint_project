@@ -54,13 +54,24 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Step 3: Update config.json with S3 bucket_name
-    - name: Update config.json with S3 bucket_name
+    # Step 3: Check if CloudFront distribution exists
+    - name: Check for Existing CloudFront Distribution
+      id: check_cloudfront
+      shell: bash
       run: |
-          sed -i "s|\"bucket_name\": \"\"|\"bucket_name\": \"${{ steps.get_bucket_name.outputs.value }}\"|g" python/src/config.json
+        EXISTING_DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ steps.get_bucket_name.outputs.value }}.s3.amazonaws.com'].Id" --output text)
+        echo "distribution_id=$EXISTING_DISTRIBUTION_ID" >> $GITHUB_ENV
+        if [ -z "$EXISTING_DISTRIBUTION_ID" ]; then
+          echo "No existing CloudFront distribution found."
+          echo "cloudfront_exists=false" >> $GITHUB_ENV
+        else
+          echo "Existing CloudFront distribution found: $EXISTING_DISTRIBUTION_ID"
+          echo "cloudfront_exists=true" >> $GITHUB_ENV
+        fi
 
-    # Step 4: Deploy CloudFront
-    - name: Setup and Deploy CloudFront in dev with Terragrunt
+    # Step 4: Conditionally Deploy CloudFront
+    - name: Deploy CloudFront if not exists
+      if: env.cloudfront_exists == 'false'
       uses: gruntwork-io/terragrunt-action@v1
       with:
         tf_version: ${{ env.tf_version }}
@@ -73,7 +84,8 @@ jobs:
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
     # Step 5: Capture CloudFront domain_name output
-    - name: Get Terraform Output for cloudfront_domain_name
+    - name: Get CloudFront Domain Name
+      if: env.cloudfront_exists == 'false'
       id: get_cloudfront_domain_name
       uses: gruntwork-io/terragrunt-action@v1
       with:
@@ -86,8 +98,23 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
+    - name: Get Existing CloudFront Domain Name
+      if: env.cloudfront_exists == 'true'
+      run: |
+        CLOUDFRONT_DOMAIN=$(aws cloudfront get-distribution --id ${{ env.distribution_id }} --query "Distribution.DomainName" --output text)
+        echo "cloudfront_domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
+
     # Step 6: Update config.json with CloudFront domain_name
     - name: Update config.json with CloudFront domain_name
       run: | 
-          sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ steps.get_cloudfront_domain_name.outputs.value }}\"|g" python/src/config.json
-          sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ steps.get_cloudfront_domain_name.outputs.value }}/filtered_products.json\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain }}\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain }}/filtered_products.json\"|g" python/src/config.json
+
+    # Step 7: Invalidate CloudFront Cache
+    - name: Invalidate CloudFront Cache
+      run: |
+        aws cloudfront create-invalidation --distribution-id ${{ env.distribution_id }} --paths "/*"
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}

@@ -2,9 +2,9 @@ name: Code Deployment
 
 on:
   workflow_run:
-    workflows: ["Infra Deployment"]  # Name of the workflow to wait for, if required
+    workflows: ["Infra Deployment"]
     types:
-      - completed  # Trigger only after the previous workflow is completed
+      - completed  # Wait for infra-deployment to complete
   push:
     branches:
       - main
@@ -12,6 +12,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run == null  # Run only if infra-deployment is successful or hasn't run
 
     steps:
     - name: Checkout code
@@ -24,7 +26,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
         pip install -r python/requirements.txt
 
     - name: Run Python script
@@ -34,4 +36,4 @@ jobs:
         AWS_DEFAULT_REGION: "eu-north-1"
         CLOUDFRONT_DOMAIN: ${{ env.CLOUDFRONT_DOMAIN }}
       run: |
-        python python/src/download_parse_upload.py
+        python3 python/src/download_parse_upload.py
