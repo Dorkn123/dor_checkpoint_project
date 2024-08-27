@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'terraform/**'  # All files in the terraform directory
-      - '.github/workflows/infra-deployment.yml'  # The infrastructure deployment file itself
-      
+      - 'terraform/**'
+      - '.github/workflows/infra-deployment.yml'
+
 env:
   tf_version: '1.9.5'
   tg_version: '0.66.9'
@@ -17,6 +17,10 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: eu-north-1  
 
     steps:
     - name: Checkout code
@@ -27,7 +31,6 @@ jobs:
       run: |
           mkdir --parents $TF_PLUGIN_CACHE_DIR
 
-    # Step 1: Deploy S3
     - name: Setup and Deploy S3 in dev with Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
       with:
@@ -35,12 +38,7 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
         tg_dir: 'terraform/environments/dev/s3'
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Step 2: Capture S3 bucket_name output
     - name: Get Terraform Output for bucket_name
       id: get_bucket_name
       uses: gruntwork-io/terragrunt-action@v1
@@ -52,12 +50,9 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Step 3: Check if CloudFront distribution exists
     - name: Check for Existing CloudFront Distribution
       id: check_cloudfront
-      shell: bash
       run: |
         EXISTING_DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ steps.get_bucket_name.outputs.value }}.s3.amazonaws.com'].Id" --output text)
         echo "distribution_id=$EXISTING_DISTRIBUTION_ID" >> $GITHUB_ENV
@@ -71,9 +66,7 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Step 4: Conditionally Deploy CloudFront
     - name: Deploy CloudFront if not exists
       if: env.cloudfront_exists == 'false'
       uses: gruntwork-io/terragrunt-action@v1
@@ -85,9 +78,7 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
-    # Step 5: Capture CloudFront domain_name output
     - name: Get CloudFront Domain Name
       if: env.cloudfront_exists == 'false'
       id: get_cloudfront_domain_name
@@ -100,25 +91,24 @@ jobs:
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
     - name: Get Existing CloudFront Domain Name
       if: env.cloudfront_exists == 'true'
       run: |
         CLOUDFRONT_DOMAIN=$(aws cloudfront get-distribution --id ${{ env.distribution_id }} --query "Distribution.DomainName" --output text)
         echo "cloudfront_domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    # Step 6: Update config.json with CloudFront domain_name
     - name: Update config.json with CloudFront domain_name
       run: | 
           sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain }}\"|g" python/src/config.json
           sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain }}/filtered_products.json\"|g" python/src/config.json
 
-    # Step 7: Invalidate CloudFront Cache
     - name: Invalidate CloudFront Cache
       run: |
         aws cloudfront create-invalidation --distribution-id ${{ env.distribution_id }} --paths "/*"
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
