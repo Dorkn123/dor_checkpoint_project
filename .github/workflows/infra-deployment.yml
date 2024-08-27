@@ -68,6 +68,10 @@ jobs:
           echo "Existing CloudFront distribution found: $EXISTING_DISTRIBUTION_ID"
           echo "cloudfront_exists=true" >> $GITHUB_ENV
         fi
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
 
     # Step 4: Conditionally Deploy CloudFront
     - name: Deploy CloudFront if not exists
