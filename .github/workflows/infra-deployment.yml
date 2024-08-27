@@ -88,6 +88,6 @@ jobs:
 
     # Step 6: Update config.json with CloudFront domain_name
     - name: Update config.json with CloudFront domain_name
-      run: |
+      run: | 
           sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ steps.get_cloudfront_domain_name.outputs.value }}\"|g" python/src/config.json
           sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ steps.get_cloudfront_domain_name.outputs.value }}/filtered_products.json\"|g" python/src/config.json

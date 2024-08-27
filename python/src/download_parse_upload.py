@@ -31,7 +31,6 @@ def download_json(url):
         print(f"Error downloading JSON data: {e}")
         raise
 
-
 def filter_products(data, min_price=100):
     print(f"Filtering products with min price: {min_price}")
     try:
@@ -46,21 +45,21 @@ def save_to_json(data, filename):
     print(f"Saving data to JSON file: {filename}")
     try:
         with open(filename, 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=4)
             print(f"Data saved successfully to {filename}")
     except Exception as e:
         print(f"Error saving data to JSON: {e}")
         raise
 
-def upload_to_s3(filename, bucket_name, s3_filename):
+def upload_to_s3(file_path, bucket_name, s3_filename):
     region = os.getenv('AWS_DEFAULT_REGION', 'eu-north-1')
-    print(f"Uploading {filename} to S3 bucket {bucket_name} in region {region} as {s3_filename}")
+    print(f"Uploading {file_path} to S3 bucket {bucket_name} in region {region} as {s3_filename}")
     s3 = boto3.client('s3', region_name=region)
     try:
-        s3.upload_file(filename, bucket_name, s3_filename)
+        s3.upload_file(file_path, bucket_name, s3_filename)
         print(f"File uploaded to S3: s3://{bucket_name}/{s3_filename}")
     except FileNotFoundError:
-        print(f"Error: The file {filename} was not found")
+        print(f"Error: The file {file_path} was not found")
     except NoCredentialsError:
         print("Error: AWS credentials not available")
     except Exception as e:
@@ -71,7 +70,9 @@ def upload_to_s3(filename, bucket_name, s3_filename):
 def download_from_cloudfront(url):
     print(f"Downloading file from CloudFront URL: {url}")
     try:
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers)
+        print(f"Request Headers: {response.request.headers}")
         print(f"Received response from CloudFront: {response.status_code}")
         if response.status_code == 200:
             print(f"File downloaded successfully from CloudFront")
@@ -81,6 +82,8 @@ def download_from_cloudfront(url):
     except Exception as e:
         print(f"Error downloading from CloudFront: {e}")
         raise
+
+
 
 def main(config_path):
     print(f"Starting main process with config: {config_path}")
