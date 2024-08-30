@@ -64,7 +64,7 @@ jobs:
       # Step 6: Update config.json with S3 Bucket Values
       - name: Update config.json with S3 Bucket Values
         run: |
-          jq --arg BUCKET_NAME "$BUCKET_NAME" '.bucket_name=$BUCKET_NAME' config.json > tmp.$$.json && mv tmp.$$.json config.json
+          jq --arg BUCKET_NAME "$BUCKET_NAME" '.bucket_name=$BUCKET_NAME' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
 
@@ -105,7 +105,7 @@ jobs:
       - name: Update config.json with CloudFront Values
         run: |
           CF_DOMAIN=$(aws cloudfront get-distribution --id $CF_ID --query "Distribution.DomainName" --output text)
-          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN' config.json > tmp.$$.json && mv tmp.$$.json config.json
+          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
         env:
           CF_ID: ${{ steps.check_cloudfront.outputs.CF_ID }}
 
