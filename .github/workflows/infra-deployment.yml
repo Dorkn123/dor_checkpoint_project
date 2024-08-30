@@ -40,6 +40,7 @@ jobs:
         with:
           tf_actions_version: ${{ env.TF_VERSION }}
           tg_actions_version: ${{ env.TG_VERSION }}
+          tf_actions_subcommand : plan
         env:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
