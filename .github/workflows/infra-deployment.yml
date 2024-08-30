@@ -4,108 +4,101 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-env:
-  AWS_DEFAULT_REGION: eu-north-1
-  ENVIRONMENT: dev
-  BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
-  SCRIPT_DIR: ${{ github.workspace }}
-  CONFIG_FILE: ${{ github.workspace }}/python/src/config.json
-  TERRAGRUNT_FILE: ${{ github.workspace }}/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
-  BACKUP_FILE: ${{ github.workspace }}/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
-  TF_VERSION: 1.9.5   # Terraform version
-  TG_VERSION: 0.66.9  # Terragrunt version
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_DEFAULT_REGION: eu-north-1
+      ENVIRONMENT: dev
+      TF_VERSION: 1.9.5
+      TG_VERSION: 0.66.9
+
     steps:
-      - name: Check out repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
-      - name: Set up AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_DEFAULT_REGION }}
-
-      - name: Set up Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: ${{ env.TF_VERSION }}  # Use the global TF_VERSION
+          terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Set up Terragrunt
+      - name: Setup Terragrunt
         uses: gruntwork-io/terragrunt-action@v1
         with:
-          tg_version: ${{ env.TG_VERSION }}  # Use the global TG_VERSION
-          tf_version: ${{ env.TF_VERSION }}  # Pass the global TF_VERSION
+          terragrunt_version: ${{ env.TG_VERSION }}
 
-      - name: Check if S3 bucket exists
-        id: check_s3
+      - name: Set Variables
         run: |
-          if aws s3api head-bucket --bucket $BUCKET_NAME 2>/dev/null; then
-            echo "Bucket exists."
-            echo "BUCKET_ARN=$(aws s3api get-bucket-location --bucket $BUCKET_NAME --output text)" >> $GITHUB_ENV
+          export BUCKET_NAME="dor-checkpoint-assets-${{ env.ENVIRONMENT }}"
+          export TERRAGRUNT_FILE="terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl"
+          export BACKUP_FILE="${TERRAGRUNT_FILE}.bak"
+          export CONFIG_FILE="python/src/config.json"
+          
+          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+          echo "TERRAGRUNT_FILE=$TERRAGRUNT_FILE" >> $GITHUB_ENV
+          echo "BACKUP_FILE=$BACKUP_FILE" >> $GITHUB_ENV
+          echo "CONFIG_FILE=$CONFIG_FILE" >> $GITHUB_ENV
+
+      - name: Backup Terragrunt File
+        run: cp ${{ env.BACKUP_FILE }} ${{ env.TERRAGRUNT_FILE }}
+
+      - name: Check S3 Bucket
+        run: |
+          bucket_exists=$(aws s3api head-bucket --bucket ${{ env.BUCKET_NAME }} 2>&1 || true)
+          
+          if echo "$bucket_exists" | grep -q 'Not Found'; then
+              echo "S3 bucket does not exist. Creating a new bucket."
+              cd terraform/environments/${{ env.ENVIRONMENT }}/s3
+              terragrunt apply -auto-approve
+              BUCKET_ARN=$(terragrunt output -raw bucket_arn)
+              echo "BUCKET_ARN=$BUCKET_ARN" >> $GITHUB_ENV
+          elif echo "$bucket_exists" | grep -q 'Forbidden'; then
+              echo "S3 bucket exists but access is forbidden."
+              exit 1
           else
-            echo "Bucket does not exist. Creating a new bucket."
-            cd terraform/environments/$ENVIRONMENT/s3
-            terragrunt apply -auto-approve
-            echo "BUCKET_ARN=$(terragrunt output -raw bucket_arn)" >> $GITHUB_ENV
+              echo "S3 bucket exists."
+              BUCKET_ARN=$(echo "arn:aws:s3:::${{ env.BUCKET_NAME }}")
+              echo "BUCKET_ARN=$BUCKET_ARN" >> $GITHUB_ENV
           fi
 
-      - name: Backup CloudFront terragrunt.hcl
+      - name: Update Terragrunt Inputs
         run: |
-          if [ -f "$TERRAGRUNT_FILE" ]; then
-            cp "$TERRAGRUNT_FILE" "$BACKUP_FILE"
-          else
-            echo "Error: $TERRAGRUNT_FILE does not exist."
-            exit 1
-          fi
+          sed -i "s/dependency.s3.outputs.bucket_name/\"${{ env.BUCKET_NAME }}\"/g" ${{ env.TERRAGRUNT_FILE }}
+          sed -i "s/dependency.s3.outputs.bucket_arn/\"$BUCKET_ARN\"/g" ${{ env.TERRAGRUNT_FILE }}
 
-      - name: Update CloudFront terragrunt.hcl
+      - name: Check CloudFront Distribution
         run: |
-          sed -i "s/dependency.s3.outputs.bucket_name/\"$BUCKET_NAME\"/g" $TERRAGRUNT_FILE
-          sed -i "s/dependency.s3.outputs.bucket_arn/\"$BUCKET_ARN\"/g" $TERRAGRUNT_FILE
-
-      - name: Check if CloudFront distribution exists
-        id: check_cloudfront
-        run: |
-          DISTRIBUTION_DATA=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${BUCKET_NAME}.s3.amazonaws.com'].{Id:Id, LastModifiedTime:LastModifiedTime}" --output json)
-          if [ -z "$DISTRIBUTION_DATA" ] || [ "$DISTRIBUTION_DATA" == "[]" ]; then
-            echo "No existing CloudFront distribution found. Creating a new distribution."
-            cd terraform/environments/$ENVIRONMENT/cloudfront
-            terragrunt apply -auto-approve
-            echo "CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
+          distribution_data=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ env.BUCKET_NAME }}.s3.amazonaws.com'].{Id:Id, LastModifiedTime:LastModifiedTime}" --output json)
+          
+          if [ -z "$distribution_data" ] || [ "$distribution_data" == "[]" ]; then
+              echo "No existing CloudFront distribution found. Creating a new distribution."
+              cd terraform/environments/${{ env.ENVIRONMENT }}/cloudfront
+              terragrunt apply -auto-approve
+              CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name)
+              echo "CLOUDFRONT_DOMAIN=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
           else
-            SELECTED_DISTRIBUTION_ID=$(echo "$DISTRIBUTION_DATA" | jq -r 'max_by(.LastModifiedTime) | .Id')
-            CLOUDFRONT_DOMAIN=$(aws cloudfront get-distribution --id "$SELECTED_DISTRIBUTION_ID" --query "Distribution.DomainName" --output text)
-            aws cloudfront create-invalidation --distribution-id "$SELECTED_DISTRIBUTION_ID" --paths "/*"
-            echo "CLOUDFRONT_DOMAIN=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
+              selected_distribution_id=$(echo "$distribution_data" | jq -r 'max_by(.LastModifiedTime) | .Id')
+              CLOUDFRONT_DOMAIN=$(aws cloudfront get-distribution --id "$selected_distribution_id" --query "Distribution.DomainName" --output text)
+              echo "CLOUDFRONT_DOMAIN=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
+              
+              if [ -z "$CLOUDFRONT_DOMAIN" ]; then
+                  echo "Error: Unable to retrieve the CloudFront domain name. Please check the CloudFront distribution."
+                  exit 1
+              fi
+
+              aws cloudfront create-invalidation --distribution-id "$selected_distribution_id" --paths "/*" || echo "Failed to invalidate CloudFront cache"
           fi
 
       - name: Update config.json
         run: |
-          jq ".bucket_name=\"$BUCKET_NAME\" | .cloudfront_domain=\"$CLOUDFRONT_DOMAIN\" | .cloudfront_url=\"https://$CLOUDFRONT_DOMAIN/filtered_products.json\"" $CONFIG_FILE > tmp.$$.json && mv tmp.$$.json $CONFIG_FILE
+          jq ".bucket_name=\"${{ env.BUCKET_NAME }}\" | .cloudfront_domain=\"$CLOUDFRONT_DOMAIN\" | .cloudfront_url=\"https://$CLOUDFRONT_DOMAIN/filtered_products.json\"" ${{ env.CONFIG_FILE }} > tmp.$$.json && mv tmp.$$.json ${{ env.CONFIG_FILE }}
 
-      - name: Cleanup or rollback
-        if: failure()
-        run: |
-          if [ -f "$BACKUP_FILE" ]; then
-            cp "$BACKUP_FILE" "$TERRAGRUNT_FILE"
-          fi
-
-      - name: Cleanup backup
+      - name: Cleanup Backup File
         if: success()
-        run: |
-          rm -f "$BACKUP_FILE"
+        run: rm ${{ env.BACKUP_FILE }}
+
+      - name: Restore Terragrunt File on Failure
+        if: failure()
+        run: cp ${{ env.BACKUP_FILE }} ${{ env.TERRAGRUNT_FILE }}
