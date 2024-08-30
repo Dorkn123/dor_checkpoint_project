@@ -28,9 +28,9 @@ jobs:
     - name: Set up environment variables
       run: |
         echo "ENVIRONMENT=dev" >> $GITHUB_ENV
-        echo "BUCKET_NAME=dor-checkpoint-assets-$ENVIRONMENT" >> $GITHUB_ENV
-        echo "TERRAGRUNT_FILE=terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
-        echo "BACKUP_FILE=$TERRAGRUNT_FILE.bak" >> $GITHUB_ENV
+        echo "BUCKET_NAME=dor-checkpoint-assets-dev" >> $GITHUB_ENV
+        echo "TERRAGRUNT_FILE=terraform/environments/dev/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
+        echo "BACKUP_FILE=${TERRAGRUNT_FILE}.bak" >> $GITHUB_ENV
 
     - name: Backup CloudFront terragrunt.hcl
       run: cp ${{ env.TERRAGRUNT_FILE }} ${{ env.BACKUP_FILE }}
@@ -42,7 +42,7 @@ jobs:
         aws s3api head-bucket --bucket ${{ env.BUCKET_NAME }} > /dev/null 2>&1
         if [ $? -eq 0 ]; then
           echo "S3_BUCKET_EXISTS=true" >> $GITHUB_ENV
-          echo "BUCKET_ARN=$(echo arn:aws:s3:::${{ env.BUCKET_NAME }})" >> $GITHUB_ENV
+          echo "BUCKET_ARN=arn:aws:s3:::${{ env.BUCKET_NAME }}" >> $GITHUB_ENV
         else
           echo "S3_BUCKET_EXISTS=false" >> $GITHUB_ENV
         fi
