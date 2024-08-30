@@ -1,7 +1,11 @@
+resource "aws_cloudfront_origin_access_identity" "this" {
+  comment = "OAI for S3 bucket"
+}
+
 resource "aws_cloudfront_distribution" "this" {
   origin {
-    domain_name = "${var.s3_bucket_name}.s3.amazonaws.com"
-    origin_id   = "S3-${var.s3_bucket_name}"
+    domain_name = "${var.bucket_name}.s3.amazonaws.com"
+    origin_id   = "S3-${var.bucket_name}"
 
     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.this.cloudfront_access_identity_path
@@ -10,10 +14,11 @@ resource "aws_cloudfront_distribution" "this" {
 
   enabled             = true
   is_ipv6_enabled     = true
+
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${var.s3_bucket_name}"
+    target_origin_id = "S3-${var.bucket_name}"
 
     forwarded_values {
       query_string = false
@@ -42,24 +47,20 @@ resource "aws_cloudfront_distribution" "this" {
   }
 }
 
-resource "aws_cloudfront_origin_access_identity" "this" {
-  comment = "OAI for S3 bucket"
-}
-
 resource "aws_s3_bucket_policy" "cloudfront_policy" {
-  bucket = var.s3_bucket_name
+  bucket = var.bucket_name
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AllowCloudFrontAccess"
-        Effect    = "Allow"
+        Sid       = "AllowCloudFrontAccess",
+        Effect    = "Allow",
         Principal = {
           AWS = aws_cloudfront_origin_access_identity.this.iam_arn
-        }
-        Action   = "s3:GetObject"
-        Resource = "${var.s3_bucket_arn}/*"
+        },
+        Action   = "s3:GetObject",
+        Resource = "arn:aws:s3:::${var.bucket_name}/*"
       }
     ]
   })

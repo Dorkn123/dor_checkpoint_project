@@ -1,16 +1,6 @@
-variable "s3_bucket_name" {
+variable "bucket_name" {
   type        = string
   description = "The name of the S3 bucket"
-}
-
-variable "s3_bucket_arn" {
-  type        = string
-  description = "The ARN of the S3 bucket"
-}
-
-variable "origin_access_identity" {
-  type        = string
-  description = "CloudFront origin access identity"
 }
 
 variable "tag_name" {

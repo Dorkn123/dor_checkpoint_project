@@ -15,3 +15,4 @@ variable "tag_owner" {
   description = "Owner tag for the S3 bucket"
   default     = "Dor Knafo"  
 }
+
