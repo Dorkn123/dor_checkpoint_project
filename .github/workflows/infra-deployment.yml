@@ -26,32 +26,44 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Terraform and Terragrunt
-      run: |
-        echo "Setting up Terraform and Terragrunt"
-        mkdir -p $TF_PLUGIN_CACHE_DIR
-        echo "Terraform version: ${{ env.tf_version }}"
-        echo "Terragrunt version: ${{ env.tg_version }}"
+    - name: Create Terraform Plugin Cache Dir
+      shell: bash
+      run: mkdir --parents $TF_PLUGIN_CACHE_DIR
 
-    - name: Deploy S3 in dev with Terragrunt
+    - name: Backup CloudFront terragrunt.hcl
       run: |
-        terragrunt apply --terragrunt-working-dir terraform/environments/dev/s3
-      env:
-        TF_VERSION: ${{ env.tf_version }}
-        TG_VERSION: ${{ env.tg_version }}
+        cp terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl.bak
+
+    - name: Setup and Deploy S3 in dev with Terragrunt
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'apply'
+        tg_dir: 'terraform/environments/dev/s3'
 
     - name: Get Terraform Output for bucket_name
       id: get_bucket_name
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'output -raw bucket_name'
+        tg_dir: 'terraform/environments/dev/s3'
+
+    - name: Get S3 Bucket ARN
+      id: get_bucket_arn
+      run: echo "BUCKET_ARN=arn:aws:s3:::${{ steps.get_bucket_name.outputs.value }}" >> $GITHUB_ENV
+
+    - name: Update CloudFront terragrunt.hcl with bucket info
       run: |
-        echo "Getting bucket name from Terraform output"
-        BUCKET_NAME=$(terragrunt output -raw bucket_name --terragrunt-working-dir terraform/environments/dev/s3)
-        echo "bucket_name=$BUCKET_NAME" >> $GITHUB_ENV
+        sed -i "s/dependency.s3.outputs.bucket_name/\"${{ steps.get_bucket_name.outputs.value }}\"/g" terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
+        sed -i "s/dependency.s3.outputs.bucket_arn/\"${{ env.BUCKET_ARN }}\"/g" terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
 
     - name: Check for Existing CloudFront Distribution
       id: check_cloudfront
       run: |
-        echo "Checking for existing CloudFront distribution"
-        EXISTING_DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ env.bucket_name }}.s3.amazonaws.com'].Id" --output text)
+        EXISTING_DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${{ steps.get_bucket_name.outputs.value }}.s3.amazonaws.com'].Id" --output text)
         echo "distribution_id=$EXISTING_DISTRIBUTION_ID" >> $GITHUB_ENV
         if [ -z "$EXISTING_DISTRIBUTION_ID" ]; then
           echo "No existing CloudFront distribution found."
@@ -63,35 +75,39 @@ jobs:
 
     - name: Deploy CloudFront if not exists
       if: env.cloudfront_exists == 'false'
-      run: |
-        echo "Deploying CloudFront distribution"
-        terragrunt apply --terragrunt-working-dir terraform/environments/dev/cloudfront
-      env:
-        TF_VERSION: ${{ env.tf_version }}
-        TG_VERSION: ${{ env.tg_version }}
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'apply'
+        tg_dir: 'terraform/environments/dev/cloudfront'
 
     - name: Get CloudFront Domain Name
       if: env.cloudfront_exists == 'false'
       id: get_cloudfront_domain_name
-      run: |
-        echo "Getting CloudFront domain name from Terraform output"
-        CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name --terragrunt-working-dir terraform/environments/dev/cloudfront)
-        echo "cloudfront_domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
+      uses: gruntwork-io/terragrunt-action@v1
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'output -raw cloudfront_domain_name'
+        tg_dir: 'terraform/environments/dev/cloudfront'
 
     - name: Get Existing CloudFront Domain Name
       if: env.cloudfront_exists == 'true'
       run: |
-        echo "Getting existing CloudFront domain name"
         CLOUDFRONT_DOMAIN=$(aws cloudfront get-distribution --id ${{ env.distribution_id }} --query "Distribution.DomainName" --output text)
         echo "cloudfront_domain=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
 
     - name: Update config.json with CloudFront domain_name
       run: | 
-        echo "Updating config.json with CloudFront domain name"
-        sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain }}\"|g" python/src/config.json
-        sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain }}/filtered_products.json\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain }}\"|g" python/src/config.json
+          sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain }}/filtered_products.json\"|g" python/src/config.json
 
     - name: Invalidate CloudFront Cache
       run: |
-        echo "Invalidating CloudFront cache"
         aws cloudfront create-invalidation --distribution-id ${{ env.distribution_id }} --paths "/*"
+
+    - name: Restore CloudFront terragrunt.hcl if failed
+      if: failure()
+      run: |
+        cp terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl.bak terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
