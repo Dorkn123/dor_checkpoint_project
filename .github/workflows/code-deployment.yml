@@ -33,7 +33,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: config.json
-        path: python/src  # Ensure the file is downloaded to the correct directory
+        #path: python/src  # Ensure the file is downloaded to the correct directory
 
     - name: Run Python script
       env:
