@@ -41,7 +41,7 @@ jobs:
       - name: Set up Terragrunt
         uses: gruntwork-io/terragrunt-action@v1
         with:
-          terragrunt_version: 0.66.9
+          tg_version: 0.66.9  # Corrected from terragrunt_version to tg_version
 
       - name: Define variables
         id: define_vars
@@ -66,7 +66,13 @@ jobs:
           fi
 
       - name: Backup CloudFront terragrunt.hcl
-        run: cp $TERRAGRUNT_FILE $BACKUP_FILE
+        run: |
+          if [ -f "$TERRAGRUNT_FILE" ]; then
+            cp "$TERRAGRUNT_FILE" "$BACKUP_FILE"
+          else
+            echo "Error: $TERRAGRUNT_FILE does not exist."
+            exit 1
+          fi
 
       - name: Update CloudFront terragrunt.hcl
         run: |
@@ -96,11 +102,11 @@ jobs:
       - name: Cleanup or rollback
         if: failure()
         run: |
-          cp $BACKUP_FILE $TERRAGRUNT_FILE
-        shell: bash
+          if [ -f "$BACKUP_FILE" ]; then
+            cp "$BACKUP_FILE" "$TERRAGRUNT_FILE"
+          fi
 
       - name: Cleanup backup
         if: success()
         run: |
-          rm $BACKUP_FILE
-        shell: bash
+          rm -f "$BACKUP_FILE"
