@@ -72,14 +72,17 @@ jobs:
       - name: Backup Terragrunt File
         run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
-      # Step 8: Check if CloudFront Distribution Exists for the S3 Bucket
+      # Step to Check if CloudFront Distribution Exists for the S3 Bucket
       - name: Check if CloudFront Distribution Exists
         id: check_cloudfront
         run: |
           BUCKET_NAME="dor-checkpoint-assets-${{ env.ENVIRONMENT }}"
           CLOUDFRONT_ORIGIN="S3-${BUCKET_NAME}"
           CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[?Id=='$CLOUDFRONT_ORIGIN']].Id | [0]" --output text)
-          if [ -z "$CF_ID" ]; then
+          
+          echo "CloudFront Distribution ID: $CF_ID" # Debugging line to print CF_ID
+          
+          if [ "$CF_ID" == "None" ] || [ -z "$CF_ID" ]; then
             echo "CloudFront distribution for bucket ${BUCKET_NAME} does not exist"
             echo "CF_EXISTS=false" >> $GITHUB_ENV
           else
@@ -89,6 +92,7 @@ jobs:
           fi
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
+
 
 
       # Step 9: Deploy CloudFront Resources if CloudFront Does Not Exist
