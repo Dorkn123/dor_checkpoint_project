@@ -40,59 +40,61 @@ jobs:
         run: |
           BUCKET_NAME="dor-checkpoint-assets-${{ env.ENVIRONMENT }}"
           if aws s3 ls "s3://${BUCKET_NAME}" 2>&1 | grep -q 'NoSuchBucket'; then
-            echo "no"
+            echo "S3 bucket does not exist"
+            echo "S3_EXISTS=false" >> $GITHUB_ENV
           else
-            echo "yes"
+            echo "S3 bucket exists"
+            echo "S3_EXISTS=true" >> $GITHUB_ENV
           fi
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
-        continue-on-error: true
 
-      # Step 5: Deploy S3 Infrastructure (if necessary)
-      - name: Deploy S3 Infrastructure
-        if: steps.check_s3.outputs.result == 'no'
-        uses: gruntwork-io/terragrunt-action@v1.5.0
+      # Step 5: Deploy S3 Resources if S3 Does Not Exist
+      - name: Deploy S3 Resources
+        if: env.S3_EXISTS == 'false'
+        uses: gruntwork-io/terragrunt-action@v1.3.2
         with:
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/s3
-          tg_command: apply
+          tg_command: apply --auto-approve
         env:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 9: Update config.json with S3 Bucket Values
+      # Step 6: Update config.json with S3 Bucket Values
       - name: Update config.json with S3 Bucket Values
         run: |
           jq --arg BUCKET_NAME "$BUCKET_NAME" '.bucket_name=$BUCKET_NAME' config.json > tmp.$$.json && mv tmp.$$.json config.json
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
 
-      # Step 6: Check if CloudFront Distribution Exists
+      # Step 7: Backup Terragrunt File
+      - name: Backup Terragrunt File
+        run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
+
+      # Step 8: Check if CloudFront Distribution Exists
       - name: Check if CloudFront Distribution Exists
         id: check_cloudfront
         run: |
           CLOUDFRONT_COMMENT="CloudFront-${{ env.ENVIRONMENT }}"
           CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='$CLOUDFRONT_COMMENT'].Id | [0]" --output text)
           if [ -z "$CF_ID" ]; then
-            echo "no"
+            echo "CloudFront distribution does not exist"
+            echo "CF_EXISTS=false" >> $GITHUB_ENV
           else
-            echo "yes"
+            echo "CloudFront distribution exists"
+            echo "CF_EXISTS=true" >> $GITHUB_ENV
             echo "CF_ID=$CF_ID" >> $GITHUB_ENV
           fi
         env:
           CLOUDFRONT_COMMENT: "CloudFront-${{ env.ENVIRONMENT }}"
-        continue-on-error: true
 
-      # Step 7: Backup Terragrunt File for CloudFront
-      - name: Backup Terragrunt File
-        run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
-
-      # Step 8: Deploy CloudFront Infrastructure (if necessary)
-      - name: Deploy CloudFront Infrastructure
-        if: steps.check_cloudfront.outputs.result == 'no'
-        uses: gruntwork-io/terragrunt-action@v1.5.0
+      # Step 9: Deploy CloudFront Resources if CloudFront Does Not Exist
+      - name: Deploy CloudFront Resources
+        if: env.CF_EXISTS == 'false'
+        uses: gruntwork-io/terragrunt-action@v1.3.2
         with:
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/cloudfront
-          tg_command: apply
+          tg_command: apply --auto-approve
         env:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
