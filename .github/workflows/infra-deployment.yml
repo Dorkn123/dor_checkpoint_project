@@ -36,7 +36,7 @@ jobs:
 
       # Step 4: Setup Terragrunt
       - name: Setup Terragrunt
-        uses: gruntwork-io/terragrunt-action@v1.5.0
+        uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
           terragrunt_version: ${{ env.TG_VERSION }}
 
