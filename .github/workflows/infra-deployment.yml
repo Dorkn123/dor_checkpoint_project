@@ -9,6 +9,7 @@ on:
       - '.github/workflows/infra-deployment.yml'
 
 env:
+  ENVIRONMENT: 'dev' # Set this to the correct environment
   tf_version: '1.9.5'
   tg_version: '0.66.9'
   TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform.d/plugin-cache
@@ -27,12 +28,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Create Terraform Plugin Cache Dir
-      shell: bash
       run: mkdir --parents $TF_PLUGIN_CACHE_DIR
 
     - name: Backup CloudFront terragrunt.hcl
-      run: |
-        cp terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl.bak
+      run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
     - name: Setup and Deploy S3 in dev with Terragrunt
       uses: gruntwork-io/terragrunt-action@v1
@@ -40,7 +39,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
-        tg_dir: 'terraform/environments/dev/s3'
+        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/s3'
 
     - name: Get Terraform Output for bucket_name
       id: get_bucket_name
@@ -49,16 +48,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'output -raw bucket_name'
-        tg_dir: 'terraform/environments/dev/s3'
-
-    - name: Get S3 Bucket ARN
-      id: get_bucket_arn
-      run: echo "BUCKET_ARN=arn:aws:s3:::${{ steps.get_bucket_name.outputs.value }}" >> $GITHUB_ENV
-
-    - name: Update CloudFront terragrunt.hcl with bucket info
-      run: |
-        sed -i "s/dependency.s3.outputs.bucket_name/\"${{ steps.get_bucket_name.outputs.value }}\"/g" terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
-        sed -i "s/dependency.s3.outputs.bucket_arn/\"${{ env.BUCKET_ARN }}\"/g" terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
+        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/s3'
 
     - name: Check for Existing CloudFront Distribution
       id: check_cloudfront
@@ -80,7 +70,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
-        tg_dir: 'terraform/environments/dev/cloudfront'
+        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/cloudfront'
 
     - name: Get CloudFront Domain Name
       if: env.cloudfront_exists == 'false'
@@ -90,7 +80,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'output -raw cloudfront_domain_name'
-        tg_dir: 'terraform/environments/dev/cloudfront'
+        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/cloudfront'
 
     - name: Get Existing CloudFront Domain Name
       if: env.cloudfront_exists == 'true'
@@ -103,11 +93,9 @@ jobs:
           sed -i "s|\"cloudfront_domain\": \"\"|\"cloudfront_domain\": \"${{ env.cloudfront_domain }}\"|g" python/src/config.json
           sed -i "s|\"cloudfront_url\": \"\"|\"cloudfront_url\": \"https://${{ env.cloudfront_domain }}/filtered_products.json\"|g" python/src/config.json
 
+    - name: Restore CloudFront terragrunt.hcl
+      run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
+
     - name: Invalidate CloudFront Cache
       run: |
         aws cloudfront create-invalidation --distribution-id ${{ env.distribution_id }} --paths "/*"
-
-    - name: Restore CloudFront terragrunt.hcl if failed
-      if: failure()
-      run: |
-        cp terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl.bak terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl
