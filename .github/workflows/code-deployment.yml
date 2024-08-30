@@ -29,11 +29,16 @@ jobs:
         python3 -m pip install --upgrade pip
         pip install -r python/requirements.txt
 
+    - name: Download config.json artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: config-artifact
+        path: python/src  # Ensure the file is downloaded to the correct directory
+
     - name: Run Python script
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: "eu-north-1"
-        CLOUDFRONT_DOMAIN: ${{ env.CLOUDFRONT_DOMAIN }}
       run: |
-        python3 python/src/download_parse_upload.py
+        python3 python/src/download_parse_upload.py python/src/config.json

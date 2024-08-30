@@ -117,7 +117,7 @@ jobs:
           echo "CF_ID=$CF_ID" >> $GITHUB_ENV
           echo "CF_EXISTS=true" >> $GITHUB_ENV
 
-# Step 11: Update config.json with CloudFront Values
+      # Step 11: Update config.json with CloudFront Values
       - name: Update config.json with CloudFront Values
         if: env.CF_EXISTS == 'true'
         run: |
@@ -126,12 +126,19 @@ jobs:
         env:
           CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
-      # Step 12: Cleanup Backup File
+      # Step 12: Save config.json as an artifact
+      - name: Upload config.json artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: config-artifact
+          path: python/src/config.json
+
+      # Step 13: Cleanup Backup File
       - name: Cleanup Backup File
         if: success()
         run: rm terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
-      # Step 13: Restore Terragrunt File on Failure
+      # Step 14: Restore Terragrunt File on Failure
       - name: Restore Terragrunt File on Failure
         if: failure()
         run: mv terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
