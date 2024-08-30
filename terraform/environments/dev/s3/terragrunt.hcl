@@ -1,16 +1,10 @@
 terraform {
-    source = "../../../modules/s3//"
+  source = "../../../modules/s3"
 }
 
 inputs = {
-  bucket_name = "dor-checkpoint-assets-${local.environment}"
-  environment = local.environment
+  bucket_name = "dor-checkpoint-assets-dev"
+  environment = "dev"
   tag_name    = "dor-checkpoint-cloudfront"
   tag_owner   = "Dor Knafo"
-  
-}
-
-
-locals {
-  environment = basename(path_relative_to_include())
 }
