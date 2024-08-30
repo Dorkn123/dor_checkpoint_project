@@ -55,6 +55,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
           tg_version: ${{ env.TG_VERSION }}
+          tf_version:  ${{ env.TF_VERSION }}
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/s3
           tg_command: apply --auto-approve
         env:
@@ -101,6 +102,7 @@ jobs:
         uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
           tg_version: ${{ env.TG_VERSION }}
+          tf_version:  ${{ env.TF_VERSION }}
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/cloudfront
           tg_command: apply --auto-approve
         env:
