@@ -9,6 +9,13 @@ on:
 env:
   AWS_DEFAULT_REGION: eu-north-1
   ENVIRONMENT: dev
+  BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
+  SCRIPT_DIR: ${{ github.workspace }}
+  CONFIG_FILE: ${{ github.workspace }}/python/src/config.json
+  TERRAGRUNT_FILE: ${{ github.workspace }}/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
+  BACKUP_FILE: ${{ github.workspace }}/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
+  TF_VERSION: 1.9.5   # Terraform version
+  TG_VERSION: 0.66.9  # Terragrunt version
 
 jobs:
   deploy:
@@ -36,21 +43,13 @@ jobs:
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.9.5
+          terraform_version: ${{ env.TF_VERSION }}  # Use the global TF_VERSION
 
       - name: Set up Terragrunt
         uses: gruntwork-io/terragrunt-action@v1
         with:
-          tg_version: 0.66.9  # Corrected from terragrunt_version to tg_version
-
-      - name: Define variables
-        id: define_vars
-        run: |
-          echo "BUCKET_NAME=dor-checkpoint-assets-${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
-          echo "SCRIPT_DIR=$(pwd)" >> $GITHUB_ENV
-          echo "CONFIG_FILE=$(pwd)/python/src/config.json" >> $GITHUB_ENV
-          echo "TERRAGRUNT_FILE=$(pwd)/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
-          echo "BACKUP_FILE=$(pwd)/terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak" >> $GITHUB_ENV
+          tg_version: ${{ env.TG_VERSION }}  # Use the global TG_VERSION
+          tf_version: ${{ env.TF_VERSION }}  # Pass the global TF_VERSION
 
       - name: Check if S3 bucket exists
         id: check_s3
@@ -60,7 +59,7 @@ jobs:
             echo "BUCKET_ARN=$(aws s3api get-bucket-location --bucket $BUCKET_NAME --output text)" >> $GITHUB_ENV
           else
             echo "Bucket does not exist. Creating a new bucket."
-            cd terraform/environments/${{ env.ENVIRONMENT }}/s3
+            cd terraform/environments/$ENVIRONMENT/s3
             terragrunt apply -auto-approve
             echo "BUCKET_ARN=$(terragrunt output -raw bucket_arn)" >> $GITHUB_ENV
           fi
@@ -85,7 +84,7 @@ jobs:
           DISTRIBUTION_DATA=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[0].DomainName=='${BUCKET_NAME}.s3.amazonaws.com'].{Id:Id, LastModifiedTime:LastModifiedTime}" --output json)
           if [ -z "$DISTRIBUTION_DATA" ] || [ "$DISTRIBUTION_DATA" == "[]" ]; then
             echo "No existing CloudFront distribution found. Creating a new distribution."
-            cd terraform/environments/${{ env.ENVIRONMENT }}/cloudfront
+            cd terraform/environments/$ENVIRONMENT/cloudfront
             terragrunt apply -auto-approve
             echo "CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
           else
