@@ -27,10 +27,10 @@ jobs:
 
     - name: Set up environment variables
       run: |
-        ENVIRONMENT="dev"
-        BUCKET_NAME="dor-checkpoint-assets-$ENVIRONMENT"
-        TERRAGRUNT_FILE="terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl"
-        BACKUP_FILE="$TERRAGRUNT_FILE.bak"
+        echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+        echo "BUCKET_NAME=dor-checkpoint-assets-$ENVIRONMENT" >> $GITHUB_ENV
+        echo "TERRAGRUNT_FILE=terraform/environments/$ENVIRONMENT/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
+        echo "BACKUP_FILE=$TERRAGRUNT_FILE.bak" >> $GITHUB_ENV
 
     - name: Backup CloudFront terragrunt.hcl
       run: cp ${{ env.TERRAGRUNT_FILE }} ${{ env.BACKUP_FILE }}
@@ -56,11 +56,10 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
         tg_dir: 'terraform/environments/dev/s3'
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        echo "BUCKET_ARN=$(terragrunt output -raw bucket_arn)" >> $GITHUB_ENV
+
+    - name: Retrieve bucket ARN after creation
+      if: env.S3_BUCKET_EXISTS == 'false'
+      run: echo "BUCKET_ARN=$(terragrunt output -raw bucket_arn)" >> $GITHUB_ENV
 
     - name: Update CloudFront terragrunt.hcl with S3 bucket details
       run: |
@@ -87,11 +86,10 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
         tg_dir: 'terraform/environments/dev/cloudfront'
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        echo "CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
+
+    - name: Retrieve CloudFront domain after creation
+      if: env.CLOUDFRONT_EXISTS == 'false'
+      run: echo "CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name)" >> $GITHUB_ENV
 
     - name: Invalidate CloudFront cache if distribution exists
       if: env.CLOUDFRONT_EXISTS == 'true'
@@ -104,4 +102,3 @@ jobs:
 
     - name: Clean up backup file
       run: rm ${{ env.BACKUP_FILE }}
-
