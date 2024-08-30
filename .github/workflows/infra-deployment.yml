@@ -38,8 +38,12 @@ jobs:
       - name: Setup Terragrunt
         uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
-          TG_VERSION: ${{ env.TG_VERSION }}
-          TF_VERSION: ${{ env.TF_VERSION }}
+          tg_version: ${{ env.TG_VERSION }}
+          tf_version: ${{ env.TF_VERSION }}
+          tg_dir: terraform/environments/${{ env.ENVIRONMENT }}
+          tg_command: plan
+
+
 
 
       # Step 5: Check if S3 Bucket Exists
