@@ -28,8 +28,8 @@ jobs:
       run: |
         echo "ENVIRONMENT=dev" >> $GITHUB_ENV
         echo "BUCKET_NAME=dor-checkpoint-assets-dev" >> $GITHUB_ENV
-        echo "TERRAGRUNT_FILE=terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
-        echo "BACKUP_FILE=${TERRAGRUNT_FILE}.bak" >> $GITHUB_ENV
+        echo "TERRAGRUNT_FILE=terraform/environments/dev/cloudfront/terragrunt.hcl" >> $GITHUB_ENV
+        echo "BACKUP_FILE=terraform/environments/dev/cloudfront/terragrunt.hcl.bak" >> $GITHUB_ENV
 
     - name: Backup CloudFront terragrunt.hcl
       run: cp ${{ env.TERRAGRUNT_FILE }} ${{ env.BACKUP_FILE }}
@@ -54,12 +54,12 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
-        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/s3'
+        tg_dir: 'terraform/environments/dev/s3'
 
     - name: Retrieve bucket ARN after creation
       if: env.S3_BUCKET_EXISTS == 'false'
       run: |
-        BUCKET_ARN=$(terragrunt output -raw bucket_arn --terragrunt-working-dir terraform/environments/${{ env.ENVIRONMENT }}/s3)
+        BUCKET_ARN=$(terragrunt output -raw bucket_arn --terragrunt-working-dir terraform/environments/dev/s3)
         echo "BUCKET_ARN=$BUCKET_ARN" >> $GITHUB_ENV
 
     - name: Update CloudFront terragrunt.hcl with S3 bucket details
@@ -87,12 +87,12 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_command: 'apply'
-        tg_dir: 'terraform/environments/${{ env.ENVIRONMENT }}/cloudfront'
+        tg_dir: 'terraform/environments/dev/cloudfront'
 
     - name: Retrieve CloudFront domain after creation
       if: env.CLOUDFRONT_EXISTS == 'false'
       run: |
-        CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name --terragrunt-working-dir terraform/environments/${{ env.ENVIRONMENT }}/cloudfront)
+        CLOUDFRONT_DOMAIN=$(terragrunt output -raw cloudfront_domain_name --terragrunt-working-dir terraform/environments/dev/cloudfront)
         echo "CLOUDFRONT_DOMAIN=$CLOUDFRONT_DOMAIN" >> $GITHUB_ENV
 
     - name: Invalidate CloudFront cache if distribution exists
