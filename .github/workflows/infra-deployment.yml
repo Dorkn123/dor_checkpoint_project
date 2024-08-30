@@ -90,6 +90,7 @@ jobs:
             echo "CloudFront distribution for bucket ${BUCKET_NAME} exists with ID: $CF_ID"
             echo "CF_EXISTS=true" >> $GITHUB_ENV
             echo "CF_ID=$CF_ID" >> $GITHUB_ENV
+            echo "::set-output name=cf_id::$CF_ID"
           fi
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
@@ -116,14 +117,14 @@ jobs:
           echo "CF_ID=$CF_ID" >> $GITHUB_ENV
           echo "CF_EXISTS=true" >> $GITHUB_ENV
 
-      # Step 11: Update config.json with CloudFront Values
+# Step 11: Update config.json with CloudFront Values
       - name: Update config.json with CloudFront Values
         if: env.CF_EXISTS == 'true'
         run: |
-          CF_DOMAIN=$(aws cloudfront get-distribution --id $CF_ID --query "Distribution.DomainName" --output text)
+          CF_DOMAIN=$(aws cloudfront get-distribution --id ${{ steps.check_cloudfront.outputs.cf_id }} --query "Distribution.DomainName" --output text)
           jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
         env:
-          CF_ID: ${{ steps.check_cloudfront.outputs.CF_ID }}
+          CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
       # Step 12: Cleanup Backup File
       - name: Cleanup Backup File
