@@ -52,8 +52,9 @@ jobs:
       # Step 5: Deploy S3 Resources if S3 Does Not Exist
       - name: Deploy S3 Resources
         if: env.S3_EXISTS == 'false'
-        uses: gruntwork-io/terragrunt-action@v1.3.2
+        uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
+          tg_version: ${{ env.TG_VERSION }}
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/s3
           tg_command: apply --auto-approve
         env:
@@ -91,8 +92,9 @@ jobs:
       # Step 9: Deploy CloudFront Resources if CloudFront Does Not Exist
       - name: Deploy CloudFront Resources
         if: env.CF_EXISTS == 'false'
-        uses: gruntwork-io/terragrunt-action@v1.3.2
+        uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
+          tg_version: ${{ env.TG_VERSION }}
           tg_dir: terraform/environments/${{ env.ENVIRONMENT }}/cloudfront
           tg_command: apply --auto-approve
         env:
