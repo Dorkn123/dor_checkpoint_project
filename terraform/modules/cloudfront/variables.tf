@@ -14,3 +14,8 @@ variable "tag_owner" {
   description = "Owner tag for the CloudFront distribution"
   default     = "Dor Knafo"
 }
+
+variable "environment" {
+  type        = string
+  description = "The environment in which the resources are deployed (e.g., dev, prod)."
+}

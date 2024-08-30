@@ -16,3 +16,8 @@ variable "tag_owner" {
   default     = "Dor Knafo"  
 }
 
+variable "environment" {
+  type        = string
+  description = "The environment in which the resources are deployed (e.g., dev, prod)."
+}
+

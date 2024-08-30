@@ -45,6 +45,8 @@ resource "aws_cloudfront_distribution" "this" {
     Owner     = var.tag_owner
     Terraform = "True"
   }
+
+  comment = "CloudFront distribution for ${var.bucket_name} in ${var.environment} environment"
 }
 
 resource "aws_s3_bucket_policy" "cloudfront_policy" {
