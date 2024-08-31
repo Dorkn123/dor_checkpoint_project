@@ -130,7 +130,7 @@ jobs:
       - name: Upload config.json artifact
         uses: actions/upload-artifact@v4
         with:
-          name: config.json
+          name: dor_artifact
           path: python/src/config.json
 
       # Step 13: Cleanup Backup File

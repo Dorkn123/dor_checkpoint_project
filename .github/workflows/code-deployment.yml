@@ -32,9 +32,9 @@ jobs:
     - name: Download config.json artifact
       uses: actions/download-artifact@v4
       with:
-        name: config.json
-        path: python/src  # Ensure the file is downloaded to the correct directory
+        name: dor_artifact
         run-id: ${{ github.event.workflow_run.outputs.infra_run_id }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run Python script
       env:
