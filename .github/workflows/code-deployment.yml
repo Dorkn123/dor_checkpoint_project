@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Infrastructure Deployment"]
     types:
-      - completed  # Wait for infra-deployment to complete
+      - completed
   push:
     branches:
       - main
@@ -13,7 +13,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run == null  # Run only if infra-deployment is successful or hasn't run
+    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run == null
 
     steps:
     - name: Checkout code
@@ -36,9 +36,12 @@ jobs:
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Unzip the artifact
+    - name: List files in the directory
+      run: ls -alh
+
+    - name: Move the config.json file
       run: |
-        unzip dor_artifact.zip -d python/src/
+        mv dor_artifact/config.json python/src/config.json
 
     - name: Run Python script
       env:
