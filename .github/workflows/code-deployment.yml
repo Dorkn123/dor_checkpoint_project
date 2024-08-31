@@ -38,7 +38,7 @@ jobs:
         path: python/src
 
     - name: Unzip the artifact in the python/src directory
-      run: unzip ${{ github.workspace }}/python/src/artifact_name.zip -d ${{ github.workspace }}/python/src/
+      run: unzip ${{ github.workspace }}/python/src/dor_artifact.zip -d ${{ github.workspace }}/python/src/
       
 
     - name: List files in the directory
