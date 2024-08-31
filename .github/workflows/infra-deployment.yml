@@ -130,12 +130,17 @@ jobs:
         run: mkdir -p ${{ github.workspace }}/artifacts
         
 
+      - name: Generate a file (example)
+        run: echo "Sample file content" > ${{ github.workspace }}/artifacts/sample.txt        
+
       # Step 12: Save config.json as an artifact
       - name: Upload config.json artifact
         uses: actions/upload-artifact@v4
         with:
           name: dor_artifact
           path: ${{ github.workspace }}/artifacts/
+          if-no-files-found: warn
+
 
       # Step 13: Cleanup Backup File
       - name: Cleanup Backup File
