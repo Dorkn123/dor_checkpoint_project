@@ -2,6 +2,7 @@
 **/.terraform/*
 *.tfstate
 *.tfstate.*
+*.lock.hcl
 
 # Python cache files
 __pycache__/

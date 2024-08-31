@@ -70,12 +70,15 @@ def download_from_cloudfront(url):
     log(f"Downloading file from CloudFront URL: {url}")
     try:
         response = requests.get(url)
+        log(f"Response status code: {response.status_code}")
+        log(f"Response headers: {response.headers}")
         response.raise_for_status()
         log("File downloaded successfully from CloudFront")
         return response.content
     except requests.exceptions.RequestException as e:
         log(f"Error downloading from CloudFront: {e}")
         raise
+
 
 def main(config_path):
     log(f"Starting main process with config: {config_path}")
