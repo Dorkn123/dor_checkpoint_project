@@ -3,10 +3,7 @@ name: Infrastructure Deployment
 on:
   push:
     branches:
-      - main 
-    paths:
-      - 'terraform/**'
-      - '.github/workflows/infra-deployment.yml'    
+      - main  
 
 env:
   AWS_DEFAULT_REGION: eu-north-1
@@ -19,9 +16,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
-      - name: Step 1 - Checkout code
+      # Step 0: Checkout the repository
+      - name: Step 0 - Checkout code
         uses: actions/checkout@v2
+
+      # Step 1: Check for changes in specific paths
+      - name: Check for relevant changes
+        id: changes_check
+        run: |
+          CHANGES=$(git diff --name-only HEAD^ HEAD | grep -E '^terraform/|^.github/workflows/infra-deployment.yml')
+          if [ -z "$CHANGES" ]; then
+            echo "No relevant changes detected. Skipping deployment."
+            echo "skip_deployment=true" >> $GITHUB_ENV
+          else
+            echo "Relevant changes detected. Proceeding with deployment."
+            echo "skip_deployment=false" >> $GITHUB_ENV
+
+      # Conditionally skip subsequent jobs
+      - name: Skip deployment if no changes
+        if: env.skip_deployment == 'true'
+        run: echo "Skipping deployment due to no changes in relevant files."        
 
       # Step 2: Setup AWS Credentials
       - name: Step 2 - Configure AWS Credentials
