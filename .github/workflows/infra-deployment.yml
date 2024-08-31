@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: config.json
-          path: python/src/
+          path: python/src/config.json
 
       # Step 13: Cleanup Backup File
       - name: Cleanup Backup File
@@ -142,3 +142,8 @@ jobs:
       - name: Restore Terragrunt File on Failure
         if: failure()
         run: mv terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
+
+      # Step 14: Set run-id output
+      - name: Set run-id output
+      id: output_run_id
+      run: echo "::set-output name=run_id::${{ github.run_id }}"
