@@ -34,7 +34,7 @@ jobs:
       with:
         name: dor_artifact
         run-id: ${{ github.event.workflow_run.outputs.infra_run_id }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run Python script
       env:
