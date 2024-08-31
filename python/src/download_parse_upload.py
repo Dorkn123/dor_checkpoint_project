@@ -1,8 +1,8 @@
 import os
 import sys
 import json
-import requests
 import boto3
+import requests
 from botocore.exceptions import NoCredentialsError, ClientError
 
 def log(message):
@@ -66,19 +66,22 @@ def upload_to_s3(file_path, bucket_name, s3_filename):
         log(f"Error uploading file to S3: {e}")
         raise
 
-def download_from_cloudfront(url):
-    log(f"Downloading file from CloudFront URL: {url}")
+def download_from_s3(bucket_name, s3_filename, local_filename):
+    region = os.getenv('AWS_DEFAULT_REGION', 'eu-north-1')
+    log(f"Downloading {s3_filename} from S3 bucket {bucket_name} in region {region} to {local_filename}")
+    s3 = boto3.client('s3', region_name=region)
     try:
-        response = requests.get(url)
-        log(f"Response status code: {response.status_code}")
-        log(f"Response headers: {response.headers}")
-        response.raise_for_status()
-        log("File downloaded successfully from CloudFront")
-        return response.content
-    except requests.exceptions.RequestException as e:
-        log(f"Error downloading from CloudFront: {e}")
+        s3.download_file(bucket_name, s3_filename, local_filename)
+        log(f"File downloaded from S3 to {local_filename}")
+        with open(local_filename, 'r') as file:
+            return file.read()
+    except FileNotFoundError:
+        log(f"Error: The file {local_filename} was not found")
+    except NoCredentialsError:
+        log("Error: AWS credentials not available")
+    except ClientError as e:
+        log(f"Error downloading file from S3: {e}")
         raise
-
 
 def main(config_path):
     log(f"Starting main process with config: {config_path}")
@@ -104,12 +107,12 @@ def main(config_path):
     # Step 4: Upload the JSON file to S3
     upload_to_s3(s3_filename, bucket_name, s3_filename)
 
-    # Step 5: Download the file via CloudFront and verify
-    downloaded_content = download_from_cloudfront(cloudfront_url)
+    # Step 5: Download the file via S3 (instead of CloudFront) and verify
+    downloaded_content = download_from_s3(bucket_name, s3_filename, s3_filename)  
     if downloaded_content:
-        log("Downloaded JSON from CloudFront successfully.")
+        log("Downloaded JSON from S3 successfully.")
     else:
-        log("Failed to verify the download from CloudFront.")
+        log("Failed to verify the download from S3.")
 
 if __name__ == "__main__":
     config_path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), 'config.json')
