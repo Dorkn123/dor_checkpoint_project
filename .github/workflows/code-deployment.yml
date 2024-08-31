@@ -35,7 +35,7 @@ jobs:
         name: dor_artifact
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        path: python/src/config.json
+        path: python/src
 
     - name: List files in the directory
       run: ls -alh
