@@ -117,43 +117,56 @@ jobs:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 11: Update CF_EXISTS and CF_ID after CloudFront Creation
-      - name: Step 11 - Update CF_EXISTS and CF_ID After CloudFront Creation
-        if: env.CF_EXISTS == 'false'
+      # Step 11: Fetch CloudFront Domain and Update config.json
+      - name: Step 11 - Fetch CloudFront Domain and Update config.json
         run: |
           CLOUDFRONT_ORIGIN="S3-${BUCKET_NAME}"
-          CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[?Id=='$CLOUDFRONT_ORIGIN']].Id | [0]" --output text)
-          echo "CF_ID=$CF_ID" >> $GITHUB_ENV
-          echo "CF_EXISTS=true" >> $GITHUB_ENV
 
-      # Step 12: Update config.json with CloudFront Values
-      - name: Step 12 - Update config.json with CloudFront Values
-        if: env.CF_EXISTS == 'true'
-        run: |
-          CF_DOMAIN=$(aws cloudfront get-distribution --id ${{ steps.check_cloudfront.outputs.cf_id }} --query "Distribution.DomainName" --output text)
+          if [ -z "$CF_ID" ] || [ "$CF_ID" == "None" ]; then
+            # Fetch the newly created CloudFront Distribution ID if it didn't exist before
+            CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[?Id=='$CLOUDFRONT_ORIGIN']].Id | [0]" --output text)
+            echo "New CloudFront ID: $CF_ID"
+          fi
+
+          # Verify CF_ID is still not empty
+          if [ -z "$CF_ID" ] || [ "$CF_ID" == "None" ]; then
+            echo "Failed to retrieve or create CloudFront Distribution ID."
+            exit 1
+          fi
+
+          # Fetch the CloudFront Domain Name using the ID
+          CF_DOMAIN=$(aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.DomainName" --output text)
+
+          if [ -z "$CF_DOMAIN" ]; then
+            echo "Failed to retrieve CloudFront Domain Name."
+            exit 1
+          fi
+          
+          # Update config.json with the CloudFront domain information
           jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN | .cloudfront_url="https://\($CF_DOMAIN)"' ${{ github.workspace }}/artifacts/config.json > tmp.$$.json && mv tmp.$$.json ${{ github.workspace }}/artifacts/config.json
         env:
+          BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
           CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
-      # Step 13: Upload the config.json as an artifact
-      - name: Step 13 - Upload config.json artifact
+      # Step 12: Upload the config.json as an artifact
+      - name: Step 12 - Upload config.json artifact
         uses: actions/upload-artifact@v4
         with:
           name: dor_artifact
           path: ${{ github.workspace }}/artifacts/
           if-no-files-found: warn
 
-      # Step 14: Cleanup Backup File
-      - name: Step 14 - Cleanup Backup File
+      # Step 13: Cleanup Backup File
+      - name: Step 13 - Cleanup Backup File
         if: success()
         run: rm terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
-      # Step 15: Restore Terragrunt File on Failure
-      - name: Step 15 - Restore Terragrunt File on Failure
+      # Step 14: Restore Terragrunt File on Failure
+      - name: Step 14 - Restore Terragrunt File on Failure
         if: failure()
         run: mv terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
 
-      # Step 16: Set run-id output
-      - name: Step 16 - Set run-id output
+      # Step 15: Set run-id output
+      - name: Step 15 - Set run-id output
         id: output_run_id
         run: echo "::set-output name=run_id::${{ github.run_id }}"
