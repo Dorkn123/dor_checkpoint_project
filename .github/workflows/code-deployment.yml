@@ -37,6 +37,10 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path: python/src
 
+    - name: List files
+      run: ls -alh ${{ github.workspace }}/python/src
+      
+
     - name: Unzip the artifact in the python/src directory
       run: unzip ${{ github.workspace }}/python/src/dor_artifact.zip -d ${{ github.workspace }}/python/src/
       
