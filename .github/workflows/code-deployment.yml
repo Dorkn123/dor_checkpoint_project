@@ -41,7 +41,7 @@ jobs:
 
     - name: Move the config.json file
       run: |
-        mv dor_artifact/config.json python/src/config.json
+        mv config.json python/src/config.json
 
     - name: Run Python script
       env:
