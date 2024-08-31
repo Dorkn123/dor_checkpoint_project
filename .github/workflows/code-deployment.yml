@@ -35,7 +35,7 @@ jobs:
         name: dor_artifact
         run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        path: artifacts
+        path: ${{ github.workspace }}/artifacts/
 
     - name: List files
       run: ls -alh ${{ github.workspace }}/artifacts
