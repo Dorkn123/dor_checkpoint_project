@@ -37,24 +37,10 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path: ${{ github.workspace }}/artifacts/
 
-    - name: List files
-      run: ls -alh ${{ github.workspace }}/artifacts
-      
-
-
-      
-
-    - name: List files in the directory
-      run: ls -alh
-
-    - name: Move the config.json file
-      run: |
-        mv config.json python/src/config.json
-
     - name: Run Python script
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: "eu-north-1"
       run: |
-        python3 python/src/download_parse_upload.py python/src/config.json
+        python3 python/src/download_parse_upload.py artifacts/config.json
