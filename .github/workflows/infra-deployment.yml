@@ -145,5 +145,5 @@ jobs:
 
       # Step 14: Set run-id output
       - name: Set run-id output
-      id: output_run_id
-      run: echo "::set-output name=run_id::${{ github.run_id }}"
+        id: output_run_id
+        run: echo "::set-output name=run_id::${{ github.run_id }}"
