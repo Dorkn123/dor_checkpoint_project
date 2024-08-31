@@ -122,7 +122,7 @@ jobs:
         if: env.CF_EXISTS == 'true'
         run: |
           CF_DOMAIN=$(aws cloudfront get-distribution --id ${{ steps.check_cloudfront.outputs.cf_id }} --query "Distribution.DomainName" --output text)
-          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
+          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN | .cloudfront_url="https://$CF_DOMAIN"' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
         env:
           CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
@@ -141,7 +141,6 @@ jobs:
           name: dor_artifact
           path: ${{ github.workspace }}/artifacts/
           if-no-files-found: warn
-
 
       # Step 13: Cleanup Backup File
       - name: Cleanup Backup File
