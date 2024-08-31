@@ -131,7 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dor_artifact
-          path: artifacts/config.json
+          path: artifacts
 
       # Step 13: Cleanup Backup File
       - name: Cleanup Backup File
