@@ -59,7 +59,7 @@ resource "aws_s3_bucket_policy" "cloudfront_policy" {
         Sid       = "AllowCloudFrontAccess",
         Effect    = "Allow",
         Principal = {
-          AWS = aws_cloudfront_origin_access_identity.this.iam_arn
+          CanonicalUser = aws_cloudfront_origin_access_identity.this.s3_canonical_user_id
         },
         Action   = "s3:GetObject",
         Resource = "arn:aws:s3:::${var.bucket_name}/*"
