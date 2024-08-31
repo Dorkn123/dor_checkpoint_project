@@ -5,9 +5,7 @@ on:
     workflows: ["Infrastructure Deployment"]
     types:
       - completed
-  push:
-    branches:
-      - main
+
 
 jobs:
   deploy:

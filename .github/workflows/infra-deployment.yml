@@ -20,11 +20,11 @@ jobs:
 
     steps:
       # Step 1: Checkout the repository
-      - name: Checkout code
+      - name: Step 1 - Checkout code
         uses: actions/checkout@v2
 
       # Step 2: Setup AWS Credentials
-      - name: Configure AWS Credentials
+      - name: Step 2 - Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -32,13 +32,19 @@ jobs:
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
 
       # Step 3: Setup Terraform
-      - name: Setup Terraform
+      - name: Step 3 - Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      # Step 4: Check if S3 Bucket Exists
-      - name: Check if S3 Bucket Exists
+      # Step 4: Create artifacts directory and copy config.json
+      - name: Step 4 - Create artifacts directory and copy config.json
+        run: |
+          mkdir -p ${{ github.workspace }}/artifacts
+          cp python/src/config.json ${{ github.workspace }}/artifacts/config.json
+
+      # Step 5: Check if S3 Bucket Exists
+      - name: Step 5 - Check if S3 Bucket Exists
         id: check_s3
         run: |
           BUCKET_NAME="dor-checkpoint-assets-${{ env.ENVIRONMENT }}"
@@ -52,8 +58,8 @@ jobs:
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
 
-      # Step 5: Deploy S3 Resources if S3 Does Not Exist
-      - name: Deploy S3 Resources
+      # Step 6: Deploy S3 Resources if S3 Does Not Exist
+      - name: Step 6 - Deploy S3 Resources
         if: env.S3_EXISTS == 'false'
         uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
@@ -65,19 +71,19 @@ jobs:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 6: Update config.json with S3 Bucket Values
-      - name: Update config.json with S3 Bucket Values
+      # Step 7: Update config.json with S3 Bucket Values
+      - name: Step 7 - Update config.json with S3 Bucket Values
         run: |
-          jq --arg BUCKET_NAME "$BUCKET_NAME" '.bucket_name=$BUCKET_NAME' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
+          jq --arg BUCKET_NAME "$BUCKET_NAME" '.bucket_name=$BUCKET_NAME' ${{ github.workspace }}/artifacts/config.json > tmp.$$.json && mv tmp.$$.json ${{ github.workspace }}/artifacts/config.json
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
 
-      # Step 7: Backup Terragrunt File
-      - name: Backup Terragrunt File
+      # Step 8: Backup Terragrunt File
+      - name: Step 8 - Backup Terragrunt File
         run: cp terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
-      # Step 8: Check if CloudFront Distribution Exists for the S3 Bucket
-      - name: Check if CloudFront Distribution Exists
+      # Step 9: Check if CloudFront Distribution Exists for the S3 Bucket
+      - name: Step 9 - Check if CloudFront Distribution Exists
         id: check_cloudfront
         run: |
           BUCKET_NAME="dor-checkpoint-assets-${{ env.ENVIRONMENT }}"
@@ -98,8 +104,8 @@ jobs:
         env:
           BUCKET_NAME: dor-checkpoint-assets-${{ env.ENVIRONMENT }}
 
-      # Step 9: Deploy CloudFront Resources if CloudFront Does Not Exist
-      - name: Deploy CloudFront Resources
+      # Step 10: Deploy CloudFront Resources if CloudFront Does Not Exist
+      - name: Step 10 - Deploy CloudFront Resources
         if: env.CF_EXISTS == 'false'
         uses: gruntwork-io/terragrunt-action@v2.1.4
         with:
@@ -111,8 +117,8 @@ jobs:
           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 10: Update CF_EXISTS and CF_ID after CloudFront Creation
-      - name: Update CF_EXISTS and CF_ID After CloudFront Creation
+      # Step 11: Update CF_EXISTS and CF_ID after CloudFront Creation
+      - name: Step 11 - Update CF_EXISTS and CF_ID After CloudFront Creation
         if: env.CF_EXISTS == 'false'
         run: |
           CLOUDFRONT_ORIGIN="S3-${BUCKET_NAME}"
@@ -120,43 +126,34 @@ jobs:
           echo "CF_ID=$CF_ID" >> $GITHUB_ENV
           echo "CF_EXISTS=true" >> $GITHUB_ENV
 
-      # Step 11: Update config.json with CloudFront Values
-      - name: Update config.json with CloudFront Values
+      # Step 12: Update config.json with CloudFront Values
+      - name: Step 12 - Update config.json with CloudFront Values
         if: env.CF_EXISTS == 'true'
         run: |
           CF_DOMAIN=$(aws cloudfront get-distribution --id ${{ steps.check_cloudfront.outputs.cf_id }} --query "Distribution.DomainName" --output text)
-          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN | .cloudfront_url="https://\($CF_DOMAIN)"' python/src/config.json > tmp.$$.json && mv tmp.$$.json python/src/config.json
+          jq --arg CF_DOMAIN "$CF_DOMAIN" '.cloudfront_domain=$CF_DOMAIN | .cloudfront_url="https://\($CF_DOMAIN)"' ${{ github.workspace }}/artifacts/config.json > tmp.$$.json && mv tmp.$$.json ${{ github.workspace }}/artifacts/config.json
         env:
           CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
-
-      # Create the artifacts directory
-      - name: Create artifacts directory
-        run: mkdir -p ${{ github.workspace }}/artifacts
-      
-      # Move the generated config.json to the artifacts directory
-      - name: Move config.json to artifacts directory
-        run: cp python/src/config.json ${{ github.workspace }}/artifacts/config.json
-
-      # Upload the config.json as an artifact
-      - name: Upload config.json artifact
+      # Step 13: Upload the config.json as an artifact
+      - name: Step 13 - Upload config.json artifact
         uses: actions/upload-artifact@v4
         with:
           name: dor_artifact
           path: ${{ github.workspace }}/artifacts/
           if-no-files-found: warn
 
-      # Step 13: Cleanup Backup File
-      - name: Cleanup Backup File
+      # Step 14: Cleanup Backup File
+      - name: Step 14 - Cleanup Backup File
         if: success()
         run: rm terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak
 
-      # Step 14: Restore Terragrunt File on Failure
-      - name: Restore Terragrunt File on Failure
+      # Step 15: Restore Terragrunt File on Failure
+      - name: Step 15 - Restore Terragrunt File on Failure
         if: failure()
         run: mv terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl.bak terraform/environments/${{ env.ENVIRONMENT }}/cloudfront/terragrunt.hcl
 
-      # Step 14: Set run-id output
-      - name: Set run-id output
+      # Step 16: Set run-id output
+      - name: Step 16 - Set run-id output
         id: output_run_id
         run: echo "::set-output name=run_id::${{ github.run_id }}"
