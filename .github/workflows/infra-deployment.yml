@@ -126,14 +126,15 @@ jobs:
         env:
           CF_ID: ${{ steps.check_cloudfront.outputs.cf_id }}
 
+      # Create the artifacts directory
       - name: Create artifacts directory
         run: mkdir -p ${{ github.workspace }}/artifacts
-        
+      
+      # Move the generated config.json to the artifacts directory
+      - name: Move config.json to artifacts directory
+        run: cp python/src/config.json ${{ github.workspace }}/artifacts/config.json
 
-      - name: Generate a file (example)
-        run: echo "Sample file content" > ${{ github.workspace }}/artifacts/sample.txt        
-
-      # Step 12: Save config.json as an artifact
+      # Upload the config.json as an artifact
       - name: Upload config.json artifact
         uses: actions/upload-artifact@v4
         with:
