@@ -33,7 +33,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dor_artifact
-        run-id: ${{ github.event.workflow_run.outputs.infra_run_id }}
+        run-id: ${{ github.event.workflow_run.id }}
         github-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run Python script
