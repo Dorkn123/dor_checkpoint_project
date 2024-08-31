@@ -1,8 +1,9 @@
 # Terraform directories and files
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-*.lock.hcl
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
+
 
 # Python cache files
 __pycache__/
